@@ -1,0 +1,80 @@
+<html><head><meta charset="utf-8" /><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor/dist/index.css"/><script src="https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor/dist/js/i18n/en_US.js"></script><script src="https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor/dist/method.min.js"></script></head><body style="width: 1075px;"><div class="vditor-reset" id="preview"><h1 id="ADI-vs-Krylov-Solver-Benchmarks">ADI vs Krylov Solver Benchmarks<a id="vditorAnchor-ADI-vs-Krylov-Solver-Benchmarks" class="vditor-anchor" href="#ADI-vs-Krylov-Solver-Benchmarks"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h1>
+<p>This respository provides a performance comparison of different numerical methods for solving elliptic PDEs of the form <span class="language-math">(I - \alpha\nabla^2)m = f</span>, which frequently arise in projection-type methods with diffusion-like operators. As an example, such systems appear in Gauss–Seidel projection methods for the Landau–Lifshitz–Gilbert equation in micromagnetic simulations. The test problem is defined on a 2D square domain <span class="language-math">\Omega_{\mathrm{c}}=[0,N]\times[0,N]</span>, and a defect in the center <span class="language-math">\Omega_{\mathrm{d}}=[\frac{N-N_d}{2},\frac{N+N_d}{2}]\times[\frac{N-N_d}{2},\frac{N+N_d}{2}]</span>, where the value of <span class="language-math">m</span> is fixed. The PDE is solved in <span class="language-math">\Omega_{\mathrm{c}}\setminus\Omega_{\mathrm{d}}</span>, with Neumann boundary condition applied. This PDE is solved via regular iterative solvers on both CPU and GPU, and an Alternating Direction Implicit (ADI) method that obtains a good approximate solution when <span class="language-math">\alpha</span> is small and is quite efficient compared to general solvers.</p>
+<h2 id="Solver-Methods">Solver Methods<a id="vditorAnchor-Solver-Methods" class="vditor-anchor" href="#Solver-Methods"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h2>
+<h3 id="1--Alternating-Direction-Implicit--ADI-">1. Alternating Direction Implicit (ADI)<a id="vditorAnchor-1--Alternating-Direction-Implicit--ADI-" class="vditor-anchor" href="#1--Alternating-Direction-Implicit--ADI-"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h3>
+<p>The ADI method decomposes the 2D Laplacian operator using operator splitting (when <span class="language-math">\alpha</span> is small):</p>
+<div class="language-math">A = (I - \alpha\nabla^2) = (I - \alpha(D_x^2+D_y^2))=(I-\alpha D_x^2)(I-\alpha D_y^2)+o(\alpha^2)=A_xA_y+o(\alpha^2)</div>
+<p>This allows the 2D problem to be solved as two sequential 1D tridiagonal systems using the Thomas algorithm, achieving <span class="language-math">O(N)</span> complexity. This is parallelized with OpenMP on CPU.</p>
+<h3 id="2--BiCGSTAB---ILU-Preconditioning">2. BiCGSTAB + ILU Preconditioning<a id="vditorAnchor-2--BiCGSTAB---ILU-Preconditioning" class="vditor-anchor" href="#2--BiCGSTAB---ILU-Preconditioning"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h3>
+<p>Traditional iterative method with incomplete LU factorization. Implemented with Eigen and PETSc with CUDA. This method is more CPU friendly as ILU preconditioning requires sequential triangular solves.</p>
+<h3 id="3--GMRES---Algebraic-Multigrid--AMG-">3. GMRES + Algebraic Multigrid (AMG)<a id="vditorAnchor-3--GMRES---Algebraic-Multigrid--AMG-" class="vditor-anchor" href="#3--GMRES---Algebraic-Multigrid--AMG-"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h3>
+<p>Krylov subspace method with multigrid preconditioning. Implemented with PETSc with CUDA. This method is more GPU friendly due to the efficiency of multigrid preconditioning on parallel architectures.</p>
+<h2 id="Quick-Start">Quick Start<a id="vditorAnchor-Quick-Start" class="vditor-anchor" href="#Quick-Start"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h2>
+<h3 id="Prerequisites">Prerequisites<a id="vditorAnchor-Prerequisites" class="vditor-anchor" href="#Prerequisites"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h3>
+<p><strong>CPU:</strong></p>
+<ul>
+<li>GCC with C++17 support</li>
+<li>OpenMP</li>
+<li><a href="https://eigen.tuxfamily.org/index.php?title=Main_Page">Eigen</a> library (MPL 2.0 license)</li>
+</ul>
+<p><strong>GPU:</strong></p>
+<ul>
+<li><a href="https://petsc.org/release/install/">PETSc</a> with CUDA support (BSD-2 license)</li>
+<li><a href="https://developer.nvidia.com/cuda-downloads">CUDA Toolkit</a> (required for PETSc GPU builds)</li>
+<li><a href="https://www.open-mpi.org/software/ompi/">MPI</a> (e.g., OpenMPI, required for PETSc)</li>
+</ul>
+<blockquote>
+<p>ℹ️ To learn how to install these dependencies, visit their official installation guides linked above.</p>
+<p>See <code>THIRD_PARTY_NOTICES.md</code> for third-party licenses and attributions.</p>
+</blockquote>
+<h3 id="Building">Building<a id="vditorAnchor-Building" class="vditor-anchor" href="#Building"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h3>
+<pre><code class="language-bash">cd src
+# Edit src/cpu/compile_cpu.sh and src/gpu/compile_gpu.sh first to custom your environment variable
+bash ./compile_all.sh
+</code></pre>
+<h3 id="Example-Benchmarks">Example Benchmarks<a id="vditorAnchor-Example-Benchmarks" class="vditor-anchor" href="#Example-Benchmarks"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h3>
+<pre><code class="language-bash"># Generate test data
+cd src/f_vec
+./generate_f 2048 512 2048_512_f.bin
+./generate_f 1024 256 1024_256_f.bin
+./generate_f 512 128 512_128_f.bin
+./generate_f 256 64 256_64_f.bin
+
+# Run CPU benchmarks
+cd src/cpu
+./run_cpu.sh &gt; cpu_output
+
+# Run GPU benchmarks  
+cd src/gpu
+# Edit run_gpu.sh first to custom your environment variable
+./run_gpu.sh &gt; gpu_output
+
+# Collect and analyze results
+python collect_cpu.py ./cpu_output --out_csv cpu_results.csv
+python collect_gpu.py ./gpu_output --out_csv gpu_results.csv
+</code></pre>
+<h2 id="Performance-Results">Performance Results<a id="vditorAnchor-Performance-Results" class="vditor-anchor" href="#Performance-Results"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h2>
+<p>For demonstration, the solvers are benchmarked with 4 systems with sizes <span class="language-math">N=2048,1024,512,256</span>, and with <span class="language-math">N_{d}=N/4</span>. Each system has <span class="language-math">N_{\mathrm{DOF}}=N^2</span> degrees of freedom. The parameter <span class="language-math">\alpha</span> is set to be 0.01, 0.02, and 0.04. For each method, it is solved 10 times and average solve time is taken for stability. Finally the solver runtime is plotted against the number of degrees of freedom. All CPU benchmarks were performed on 32 CPU threads on Intel Gold 6248R CPU, and the PETSc programs with CUDA are on a single NVIDIA A100 GPU. In addition, the relative L2 differences <span class="language-math">||x_{\mathrm{ADI}}-x_{\mathrm{iterative}}||_2/||x_{\mathrm{iterative}}||_2</span> for different <span class="language-math">\alpha</span> values are shown. Here are results:</p>
+<p><img src="./doc/0.01.jpg" alt="Figure 1: alpha=0.01" /></p>
+<p><em>Figure 1: Solve time comparison for <span class="language-math">\alpha=0.01</span>.</em></p>
+<p><img src="./doc/0.02.jpg" alt="Figure 2: alpha=0.02" /></p>
+<p><em>Figure 2: Solve time comparison for <span class="language-math">\alpha=0.02</span>.</em></p>
+<p><img src="./doc/0.04.jpg" alt="Figure 3: alpha=0.04" /></p>
+<p><em>Figure 3: Solve time comparison for <span class="language-math">\alpha=0.04</span>.</em></p>
+<p><img src="./doc/L2_diff.jpg" alt="Figure 4: L2_diff" /></p>
+<p><em>Figure 4: Relative L2 difference for different <span class="language-math">N,\alpha</span>.</em></p>
+<h3 id="Key-Observations">Key Observations<a id="vditorAnchor-Key-Observations" class="vditor-anchor" href="#Key-Observations"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h3>
+<ul>
+<li><strong>BiCGSTAB + ILU is less GPU-friendly</strong>:<br />
+ILU preconditioning relies on sequential triangular solves, which are well-suited to CPUs but inefficient on GPUs. Consequently, BiCGSTAB + ILU scales poorly on GPUs compared to GMRES + AMG.</li>
+<li><strong>ADI shows competitive performance</strong>:<br />
+ADI shows competitive performance: Across all tested system sizes, ADI achieves runtimes comparable to GMRES + AMG, highlighting its efficiency as a lightweight direct solver.</li>
+<li><strong>Error convergence of ADI</strong>:<br />
+The relative L2 difference decreases as <span class="language-math">\alpha</span> becomes small, confirming that ADI provides accurate approximations in this regime.</li>
+</ul>
+<h2 id="Acknowledgments">Acknowledgments<a id="vditorAnchor-Acknowledgments" class="vditor-anchor" href="#Acknowledgments"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h2>
+<p>The author thanks Professor Carlos J. García Cervera at UC Santa Barbara for suggesting the ADI algorithm.</p>
+<h2 id="License">License<a id="vditorAnchor-License" class="vditor-anchor" href="#License"><svg viewBox="0 0 16 16" version="1.1" width="16" height="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a></h2>
+<p>MIT License - Copyright (c) 2025 Hongyi Guan<br />
+See LICENSE file for full license text.</p>
+</div><script>    const previewElement = document.getElementById('preview');    Vditor.setContentTheme('idea-light', 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor/dist/css/content-theme');    Vditor.codeRender(previewElement);    Vditor.highlightRender({"enable":true,"lineNumber":false,"style":"dracula"}, previewElement, 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor');    Vditor.mathRender(previewElement, { cdn: 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor',math: {"engine":"KaTeX","inlineDigit":true,"macros":{}}});    Vditor.mermaidRender(previewElement, 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor', 'light');    Vditor.flowchartRender(previewElement, 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor');    Vditor.graphvizRender(previewElement, 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor');    Vditor.chartRender(previewElement, 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor', 'light');    Vditor.mindmapRender(previewElement, 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor', 'light');    Vditor.abcRender(previewElement, 'https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor');    Vditor.mediaRender(previewElement);    Vditor.speechRender(previewElement); </script>  <script src="https://cdn.jsdelivr.net/gh/shuzijun/markdown-editor@1.12/src/main/resources/vditor/dist/js/icons/ant.js"></script></body></html>
