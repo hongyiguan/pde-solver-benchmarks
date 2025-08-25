@@ -10,7 +10,6 @@ The ADI method decomposes the 2D Laplacian operator using operator splitting (wh
 
 $$
 A = (I - \alpha\nabla^2) = (I - \alpha(D_x^2+D_y^2))=(I-\alpha D_x^2)(I-\alpha D_y^2)+o(\alpha^2)=A_xA_y+o(\alpha^2)
-
 $$
 
 This allows the 2D problem to be solved as two sequential 1D tridiagonal systems using the Thomas algorithm, achieving $O(N)$ complexity. This is parallelized with OpenMP on CPU.
@@ -77,7 +76,8 @@ python collect_gpu.py ./gpu_output --out_csv gpu_results.csv
 
 ## Performance Results
 
-For demonstration, the solvers are benchmarked with 4 systems with sizes $N=2048,1024,512,256$, and with $N_{d}=N/4$. Each system has $N_{\mathrm{DOF}}=N^2$ degrees of freedom. The parameter $\alpha$ is set to be 0.01, 0.02, and 0.04. For each method, it is solved 10 times and average solve time is taken for stability. Finally the solver runtime is plotted against the number of degrees of freedom. All CPU benchmarks were performed on 32 CPU threads on Intel Gold 6248R CPU, and the PETSc programs with CUDA are on a single NVIDIA A100 GPU. In addition, the relative L2 differences $||x_{\mathrm{ADI}}-x_{\mathrm{iterative}}||_2/||x_{\mathrm{iterative}}||_2$ for different $\alpha$ values are shown. Here are results:
+For demonstration, the solvers are benchmarked with 4 systems with sizes $N=2048,1024,512,256$, and with $N_{d}=N/4$. Each system has $N_{\mathrm{DOF}}=N^2$ degrees of freedom. The parameter $\alpha$ is set to be 0.01, 0.02, and 0.04. For each method, it is solved 10 times and average solve time is taken for stability. Finally the solver runtime is plotted against the number of degrees of freedom. All CPU benchmarks were performed on 32 CPU threads on Intel Gold 6248R CPU, and the PETSc programs with CUDA are on a single NVIDIA A100 GPU. In addition, the relative L2 differences $\frac{\lVert x_{\mathrm{ADI}} - x_{\mathrm{iterative}} \rVert_2}{\lVert x_{\mathrm{iterative}} \rVert_2}$
+ for different $\alpha$ values are shown. Here are results:
 
 ![Figure 1: alpha=0.01](./doc/0.01.jpg)
 
@@ -112,3 +112,4 @@ The author thanks Professor Carlos J. García Cervera at UC Santa Barbara for su
 
 MIT License - Copyright (c) 2025 Hongyi Guan
 See LICENSE file for full license text.
+
